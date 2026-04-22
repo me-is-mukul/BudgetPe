@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL \"https://stitch.withgoogle.com/projects/2592840548671455863/screens/b0c8f970497a4bfdbf8d3154ab5eafd5\")",
+      "Bash(curl -sL \"https://stitch.withgoogle.com/api/projects/2592840548671455863/screens/b0c8f970497a4bfdbf8d3154ab5eafd5/screenshot\" -H \"Accept: application/json\")",
+      "Bash(curl -sL \"https://app-companion-430619.appspot.com/api/projects/2592840548671455863/screens/b0c8f970497a4bfdbf8d3154ab5eafd5\")"
+    ]
+  }
+}

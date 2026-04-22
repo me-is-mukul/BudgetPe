@@ -1,9 +1,29 @@
-function App(){
-  return (
-    <div className="App">
-      <h1>Welcome to the App!</h1>
-    </div>
-  );
-}
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext'
+import Landing from './routes/Landing'
+import Login from './routes/Login'
+import Register from './routes/Register'
+import Dashboard from './routes/Dashboard'
+import ProtectedRoute from './components/ProtectedRoute'
 
-export default App;
+export default function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/"          element={<Landing />} />
+          <Route path="/login"     element={<Login />} />
+          <Route path="/register"  element={<Register />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
+  )
+}
