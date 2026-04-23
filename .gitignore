@@ -202,3 +202,14 @@ docker-compose.override.yml
 *.temp
 .temp/
 tmp/
+
+# ========================
+# Python cache
+# ========================
+__pycache__/
+*.pyc
+
+# ========================
+# ML generated files
+# ========================
+ML model/data/
