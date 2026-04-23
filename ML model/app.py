@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from pipeline import process_message
+from collections import defaultdict
+from ML_model_2.behavior.pipeline import behavior_pipeline
 
 app = Flask(__name__)
 
@@ -23,5 +25,31 @@ def classify():
 
     return jsonify(result)
 
+@app.route("/model/clustering", methods=["POST"])
+def clustering():
+    data = request.get_json()
+
+    if not data or "transactions" not in data:
+        return jsonify({"error": "No transactions provided"}), 400
+
+    transactions = data["transactions"]
+
+    if not isinstance(transactions, list):
+        return jsonify({"error": "Transactions should be a list"}), 400
+
+    user_transactions = defaultdict(list)
+
+    for txn in transactions:
+        user_id = txn.get("user")
+
+        if not user_id:
+            continue
+
+        user_transactions[user_id].append(txn)
+
+    result = behavior_pipeline(user_transactions)
+
+    return jsonify(result)
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(port=5001, debug=True)
