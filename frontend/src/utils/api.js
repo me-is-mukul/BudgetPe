@@ -1,18 +1,22 @@
-const BASE = 'http://localhost:5000/api'
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 
-const headers = (auth = false) => ({
+const authHeaders = () => ({
   'Content-Type': 'application/json',
-  ...(auth && { Authorization: `Bearer ${localStorage.getItem('bp_token')}` }),
-})
+  Authorization: `Bearer ${localStorage.getItem('bp_token')}`,
+});
+
+const jsonHeaders = () => ({
+  'Content-Type': 'application/json',
+});
 
 export const api = {
   post: (path, body, auth = false) =>
     fetch(`${BASE}${path}`, {
       method: 'POST',
-      headers: headers(auth),
+      headers: auth ? authHeaders() : jsonHeaders(),
       body: JSON.stringify(body),
     }).then((r) => r.json()),
 
   get: (path) =>
-    fetch(`${BASE}${path}`, { headers: headers(true) }).then((r) => r.json()),
-}
+    fetch(`${BASE}${path}`, { headers: authHeaders() }).then((r) => r.json()),
+};

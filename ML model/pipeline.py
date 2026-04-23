@@ -13,21 +13,20 @@ def rule_based_category(receiver: str):
 
     receiver = receiver.lower()
 
-    if any(x in receiver for x in ["swiggy", "zomato", "eats"]):
+    if any(x in receiver for x in ["swiggy", "zomato", "eats", "food", "restaurant"]):
         return "food"
 
-    if any(x in receiver for x in ["uber", "rapido", "ola"]):
+    if any(x in receiver for x in ["uber", "rapido", "ola", "taxi", "cab", "auto", "travel"]):
         return "travel"
 
-    if any(x in receiver for x in ["amazon", "flipkart", "myntra"]):
+    if any(x in receiver for x in ["amazon", "flipkart", "myntra", "ebay", "shop", "store"]):
         return "shopping"
 
     return None
 
 def ml_fallback(data: dict):
     """
-    Temporary logic using amount + time.
-    Replace this with model.predict() later.
+    Fallback logic using amount + time when ML model is unavailable.
     """
     amount = data.get("amount")
     timestamp = data.get("timestamp")
@@ -49,6 +48,9 @@ def ml_fallback(data: dict):
     return "others"
 
 def process_message(msg: str):
+    """
+    Process SMS message and return classification result
+    """
     if not is_bank_message(msg):
         return None
 
@@ -63,15 +65,22 @@ def process_message(msg: str):
     if amount is None:
         return None
 
+    # Try rule-based classification first
     category = rule_based_category(receiver)
 
+    # If no rule matches, try ML model
     if not category:
         category = ml_predict(data)
+
+    # If ML model also fails, use fallback
+    if not category:
+        category = ml_fallback(data)
 
     current_timestamp = datetime.now().isoformat()
 
     return {
-        "category": category,
+        "category": category or "others",
         "amount": amount,
-        "date": current_timestamp
+        "date": current_timestamp,
+        "receiver": receiver or "Unknown"
     }
