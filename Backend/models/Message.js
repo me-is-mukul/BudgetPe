@@ -7,9 +7,9 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    sender: {
+    category: {
       type: String,
-      required: [true, "Sender is required"],
+      required: [true, "Category is required"],
       trim: true,
     },
     amount: {
@@ -20,11 +20,6 @@ const messageSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Date is required"],
       default: Date.now,
-    },
-    additionalMessage: {
-      type: String,
-      trim: true,
-      default: "",
     },
   },
   { timestamps: true }

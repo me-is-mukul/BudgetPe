@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BudgetPe",
-    "slug": "mobile",
+    "name": "smsApp",
+    "slug": "smsApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "smsapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -20,10 +20,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.READ_SMS",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
-      ]
+      "package": "com.rotten.paintbrush.smsApp"
     },
     "web": {
       "output": "static",
@@ -31,7 +28,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-background-task",
       [
         "expo-splash-screen",
         {

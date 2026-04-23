@@ -1,14 +1,13 @@
 import Constants from 'expo-constants';
 
 function getDevHost(): string {
-  // Expo Go: debuggerHost = "192.168.1.x:8081"
   const goHost = Constants.expoGoConfig?.debuggerHost;
   if (goHost) return goHost.split(':')[0];
-  // Dev build (expo run:android): hostUri = "192.168.1.x:8081"
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) return hostUri.split(':')[0];
   return '10.174.140.38';
 }
+
 
 export const BASE_URL = __DEV__
   ? `http://${getDevHost()}:5000/api`
@@ -33,7 +32,7 @@ export async function login(email: string, password: string) {
   }
   const data = await res.json();
   if (!res.ok) throw new Error(extractError(data, 'Login failed'));
-  return data;
+  return data as { token: string; user: { id: string; name: string; email: string; phoneNumber: string } };
 }
 
 export async function register(
@@ -54,7 +53,7 @@ export async function register(
   }
   const data = await res.json();
   if (!res.ok) throw new Error(extractError(data, 'Registration failed'));
-  return data;
+  return data as { token: string; user: { id: string; name: string; email: string; phoneNumber: string } };
 }
 
 export async function postMessage(

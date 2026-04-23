@@ -1,4 +1,4 @@
-export default function MessageCard({ sender, amount, date, additionalMessage }) {
+export default function MessageCard({ category, amount, date }) {
   const isCredit = amount >= 0
   const formatted = new Date(date).toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -26,16 +26,16 @@ export default function MessageCard({ sender, amount, date, additionalMessage })
           color: isCredit ? 'var(--success)' : 'var(--danger)',
         }}
       >
-        {sender?.[0]?.toUpperCase() || '?'}
+        {category?.[0]?.toUpperCase() || '?'}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
-          {sender}
+          {category}
         </p>
         <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          {additionalMessage || formatted}
+          {formatted}
         </p>
       </div>
 

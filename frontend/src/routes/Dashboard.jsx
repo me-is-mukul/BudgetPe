@@ -16,7 +16,7 @@ function SpendingBar({ messages }) {
   const categories = {}
   messages.forEach((m) => {
     if (m.amount < 0) {
-      const key = m.sender || 'Other'
+      const key = m.category || 'Other'
       categories[key] = (categories[key] || 0) + Math.abs(m.amount)
     }
   })

@@ -15,20 +15,19 @@ const getMessages = async (req, res, next) => {
 
 const sendMessage = async (req, res, next) => {
   try {
-    const { sender, amount, date, additionalMessage } = req.body;
-    console.log(`[sendMessage] attempt — user: ${req.user._id}, sender: ${sender}, amount: ${amount}`);
+    const { category, amount, date } = req.body;
+    console.log(`[sendMessage] attempt — user: ${req.user._id}, category: ${category}, amount: ${amount}`);
 
-    if (!sender || amount === undefined) {
-      console.warn(`[sendMessage] failed — missing required fields (sender, amount)`);
-      return res.status(400).json({ message: "sender and amount are required" });
+    if (!category || amount === undefined) {
+      console.warn(`[sendMessage] failed — missing required fields (category, amount)`);
+      return res.status(400).json({ message: "category and amount are required" });
     }
 
     const newMessage = new Message({
       user: req.user._id,
-      sender,
+      category,
       amount,
       date: date || Date.now(),
-      additionalMessage,
     });
 
     const savedMessage = await newMessage.save();
