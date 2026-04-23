@@ -43,11 +43,12 @@ const stats = [
 
 export default function Landing() {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', color: 'var(--text)', overflowX: 'hidden' }}>
+    <div style={{ background: 'transparent', minHeight: '100vh', color: 'var(--text)', overflowX: 'hidden' }}>
       <Navbar />
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative min-h-screen flex items-center px-6 md:px-12 pt-16">
+        <div className="hero-contrast-layer" />
         {/* Ambient glows */}
         <div style={{
           position: 'absolute', top: '10%', left: '-5%', width: '50%', height: '60%',

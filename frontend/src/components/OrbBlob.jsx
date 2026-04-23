@@ -57,6 +57,22 @@ export default function OrbBlob({ className = '' }) {
         <pointLight position={[0, 0, 5]} intensity={1.2} color="#ffffff" />
         <AnimatedBlob />
       </Canvas>
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: '12%',
+          zIndex: 2,
+          borderRadius: '999px',
+          border: '1px solid rgba(255,255,255,0.28)',
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.25), rgba(255,255,255,0.04) 35%, rgba(255,255,255,0.12) 100%)',
+          boxShadow: 'inset 0 0 22px rgba(255,255,255,0.15), 0 0 38px rgba(124,58,237,0.2)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          pointerEvents: 'none',
+          mixBlendMode: 'screen',
+        }}
+      />
     </div>
   )
 }

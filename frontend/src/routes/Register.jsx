@@ -42,7 +42,7 @@ export default function Register() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative"
-      style={{ background: 'var(--bg)' }}
+      style={{ background: 'transparent' }}
     >
       <div style={{
         position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)',

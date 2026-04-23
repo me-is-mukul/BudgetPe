@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import MessageCard from '../components/MessageCard'
@@ -102,7 +103,7 @@ function CategoryCard({ category, amount, count, total, onReport }) {
 
       <button
         onClick={onReport}
-        className="text-xs font-semibold py-1.5 px-3 rounded-lg self-start transition-all"
+        className="text-xs font-semibold py-1.5 px-3 rounded-lg self-start transition-all report-click"
         style={{
           background: `${color}15`,
           color,
@@ -118,6 +119,8 @@ function CategoryCard({ category, amount, count, total, onReport }) {
 }
 
 export default function Dashboard() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [reportCategory, setReportCategory] = useState(null)
@@ -150,9 +153,17 @@ export default function Dashboard() {
   const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
 
   const sortedCategories = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
+  const activeTab = new URLSearchParams(location.search).get('tab') || 'dashboard'
+
+  useEffect(() => {
+    const validTabs = new Set(['dashboard', 'transactions', 'analytics'])
+    if (!validTabs.has(activeTab)) {
+      navigate('/dashboard?tab=dashboard', { replace: true })
+    }
+  }, [activeTab, navigate])
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', color: 'var(--text)' }}>
+    <div style={{ background: 'transparent', minHeight: '100vh', color: 'var(--text)' }}>
       <Sidebar />
 
       <main className="md:ml-60 p-6 md:p-8 max-w-5xl">
@@ -163,7 +174,7 @@ export default function Dashboard() {
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
             <h1 className="text-2xl font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--text)' }}>
-              {getGreeting()}, {user?.name?.split(' ')[0] ?? 'there'} 👋
+              {getGreeting()}, {user?.name?.split(' ')[0] ?? 'there'}
             </h1>
           </div>
           <span
@@ -175,39 +186,61 @@ export default function Dashboard() {
           </span>
         </div>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <StatCard label="Total Spent"    value={fmt(totalSpent)}        sub={`${messages.length} transactions`} color="#ef4444" />
-          <StatCard label="Categories"     value={sortedCategories.length} sub="Spending categories"              color="#7c3aed" />
-          <StatCard label="Top Category"   value={topCategory}             sub="Highest spend category"           color="#f59e0b" />
-        </div>
+        {activeTab === 'dashboard' && (
+          <>
+            <div className="card p-4 mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
+                Dashboard Overview
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <StatCard label="Total Spent" value={fmt(totalSpent)} sub={`${messages.length} transactions`} color="#ef4444" />
+                <StatCard label="Categories" value={sortedCategories.length} sub="Spending categories" color="#7c3aed" />
+                <StatCard label="Top Category" value={topCategory} sub="Highest spend category" color="#f59e0b" />
+              </div>
+            </div>
 
-        {/* Spending breakdown bar */}
-        {!loading && (
-          <SpendingBar byCategory={byCategory} total={totalSpent} />
+            {!loading && (
+              <SpendingBar byCategory={byCategory} total={totalSpent} />
+            )}
+          </>
         )}
 
-        {/* Category cards */}
-        {!loading && sortedCategories.length > 0 && (
+        {activeTab === 'analytics' && (
           <div className="mb-6">
-            <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text)' }}>By Category</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {sortedCategories.map(([cat, amount]) => (
-                <CategoryCard
-                  key={cat}
-                  category={cat}
-                  amount={amount}
-                  count={categoryCounts[cat]}
-                  total={totalSpent}
-                  onReport={() => setReportCategory(cat)}
-                />
-              ))}
+            <div className="card p-4 mb-4">
+              <h2 className="text-base font-bold mb-1" style={{ color: 'var(--text)' }}>Analytics</h2>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Category-wise performance and report generation.
+              </p>
             </div>
+            {!loading && sortedCategories.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {sortedCategories.map(([cat, amount]) => (
+                  <CategoryCard
+                    key={cat}
+                    category={cat}
+                    amount={amount}
+                    count={categoryCounts[cat]}
+                    total={totalSpent}
+                    onReport={() => setReportCategory(cat)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Transactions list */}
-        <div className="card p-6">
+        {activeTab === 'transactions' && (
+          <div className="card p-4 mb-4">
+            <h2 className="text-base font-bold mb-1" style={{ color: 'var(--text)' }}>Transactions</h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Complete list of synced expenses and merchant activity.
+            </p>
+          </div>
+        )}
+
+        {(activeTab === 'transactions' || activeTab === 'dashboard') && (
+          <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-bold" style={{ color: 'var(--text)' }}>Recent Transactions</h2>
             <span
@@ -246,7 +279,8 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-        </div>
+          </div>
+        )}
       </main>
 
       {reportCategory && (
