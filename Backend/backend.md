@@ -15,9 +15,10 @@ Base URL: `http://localhost:5000/api`
 
 ## Messages
 
-| Method | Endpoint | Auth |
-|---|---|---|
-| GET | `/messages` | Bearer token |
+| Method | Endpoint | Body | Auth |
+|---|---|---|---|
+| GET | `/messages` | — | Bearer token |
+| POST | `/messages` | `sender, amount, date (opt), additionalMessage (opt)` | Bearer token |
 
 ---
 
