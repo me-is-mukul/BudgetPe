@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import { api } from '../utils/api'
+
 const CATEGORY_INSIGHTS = {
   food: [
     'Your food spend peaks on weekends — meal prepping on Sundays could cut costs by up to 30%.',
@@ -79,8 +82,43 @@ export default function ReportModal({ category, messages, onClose }) {
     (m) => m.category?.toLowerCase() === category?.toLowerCase()
   )
   const total = filtered.reduce((s, m) => s + m.amount, 0)
-  const insights = getInsights(category)
+  const [insights, setInsights] = useState(getInsights(category))
+  const [aiSource, setAiSource] = useState('fallback')
+  const [aiReason, setAiReason] = useState('')
+  const [loading, setLoading] = useState(true)
   const color = getCategoryColor(category)
+
+  useEffect(() => {
+    let mounted = true
+
+    api
+      .post('/messages/report', { category, days: 90 }, true)
+      .then((data) => {
+        if (!mounted) return
+        if (Array.isArray(data?.insights) && data.insights.length > 0) {
+          setInsights(data.insights)
+          setAiSource(data.source ?? 'gemini')
+          setAiReason(data.reason ?? '')
+        } else {
+          setInsights(getInsights(category))
+          setAiSource('fallback')
+          setAiReason('No insights in response')
+        }
+      })
+      .catch(() => {
+        if (!mounted) return
+        setInsights(getInsights(category))
+        setAiSource('fallback')
+        setAiReason('Request failed')
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [category])
 
   return (
     <div
@@ -92,8 +130,9 @@ export default function ReportModal({ category, messages, onClose }) {
       onClick={onClose}
     >
       <div
+        className="report-modal-panel"
         style={{
-          background: 'var(--card)', borderRadius: 20, padding: 28,
+          background: 'var(--surface)', borderRadius: 20, padding: 28,
           width: '100%', maxWidth: 460, border: '1px solid var(--border)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
         }}
@@ -117,6 +156,7 @@ export default function ReportModal({ category, messages, onClose }) {
           </div>
           <button
             onClick={onClose}
+            className="hover-surface"
             style={{
               background: 'var(--surface-hover)', border: '1px solid var(--border)',
               borderRadius: 10, width: 34, height: 34, cursor: 'pointer',
@@ -153,11 +193,26 @@ export default function ReportModal({ category, messages, onClose }) {
                 textTransform: 'uppercase', letterSpacing: '0.06em', border: '1px solid rgba(124,58,237,0.25)',
               }}
             >
-              Gemini
+              {loading ? 'Thinking...' : aiSource.includes('gemini') ? 'Gemini' : 'Fallback'}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {insights.map((text, i) => (
+            {loading && (
+              <div
+                className="report-modal-loading"
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: 'var(--surface-hover)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-muted)',
+                  fontSize: 13,
+                }}
+              >
+                Generating a personalized category report...
+              </div>
+            )}
+            {!loading && insights.map((text, i) => (
               <div
                 key={i}
                 style={{
@@ -173,8 +228,15 @@ export default function ReportModal({ category, messages, onClose }) {
         </div>
 
         <p style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-          Insights are AI-generated placeholders · Gemini integration coming soon
+          {aiSource.includes('gemini')
+            ? 'Insights generated using Gemini and your real category behavior'
+            : 'Showing local fallback insights because Gemini response was unavailable'}
         </p>
+        {!loading && aiReason && aiSource === 'fallback' && (
+          <p style={{ fontSize: 10, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
+            Debug: {aiReason}
+          </p>
+        )}
       </div>
     </div>
   )

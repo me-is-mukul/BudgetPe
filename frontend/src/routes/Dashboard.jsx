@@ -25,6 +25,18 @@ function getGreeting() {
   return 'Good evening'
 }
 
+function personaTone(persona) {
+  const tones = {
+    'Impulse Eater': { color: '#f59e0b', glow: 'rgba(245,158,11,0.22)' },
+    'Big Spender': { color: '#ec4899', glow: 'rgba(236,72,153,0.22)' },
+    'Daily Commuter': { color: '#06b6d4', glow: 'rgba(6,182,212,0.22)' },
+    'Weekend Spender': { color: '#8b5cf6', glow: 'rgba(139,92,246,0.22)' },
+    'Irregular Spender': { color: '#ef4444', glow: 'rgba(239,68,68,0.22)' },
+    'Balanced User': { color: '#10b981', glow: 'rgba(16,185,129,0.22)' },
+  }
+  return tones[persona] ?? tones['Balanced User']
+}
+
 function SpendingBar({ byCategory, total }) {
   const top = Object.entries(byCategory)
     .sort((a, b) => b[1] - a[1])
@@ -103,14 +115,12 @@ function CategoryCard({ category, amount, count, total, onReport }) {
 
       <button
         onClick={onReport}
-        className="text-xs font-semibold py-1.5 px-3 rounded-lg self-start transition-all report-click"
+        className="text-xs font-semibold py-1.5 px-3 rounded-lg self-start transition-all report-click hover-surface"
         style={{
           background: `${color}15`,
           color,
           border: `1px solid ${color}30`,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = `${color}25` }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = `${color}15` }}
       >
         Generate Report ✦
       </button>
@@ -124,14 +134,26 @@ export default function Dashboard() {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [reportCategory, setReportCategory] = useState(null)
+  const [insightDays, setInsightDays] = useState(30)
+  const [insightLoading, setInsightLoading] = useState(false)
+  const [insightError, setInsightError] = useState('')
+  const [insightData, setInsightData] = useState(null)
+  const [messagesError, setMessagesError] = useState('')
   const user = getUser()
 
   useEffect(() => {
     api
       .get('/messages')
       .then((data) => setMessages(data.messages ?? []))
+      .catch((error) => {
+        if (error?.status === 401) {
+          navigate('/login')
+          return
+        }
+        setMessagesError(error?.message || 'Unable to load your transactions right now.')
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [navigate])
 
   // All messages are debits — amounts are always positive
   const totalSpent = messages.reduce((s, m) => s + m.amount, 0)
@@ -154,6 +176,12 @@ export default function Dashboard() {
 
   const sortedCategories = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
   const activeTab = new URLSearchParams(location.search).get('tab') || 'dashboard'
+  const tabTitle = activeTab[0].toUpperCase() + activeTab.slice(1)
+  const tabSubtitle = {
+    dashboard: 'High-level overview of your latest spending activity.',
+    transactions: 'A complete timeline of your synced expense messages.',
+    analytics: 'Category trends and AI-powered report generation.',
+  }[activeTab]
 
   useEffect(() => {
     const validTabs = new Set(['dashboard', 'transactions', 'analytics'])
@@ -162,13 +190,44 @@ export default function Dashboard() {
     }
   }, [activeTab, navigate])
 
+  const loadInsights = async () => {
+    const days = Math.min(Math.max(Number(insightDays) || 1, 1), 365)
+    setInsightLoading(true)
+    setInsightError('')
+
+    try {
+      const data = await api.get(`/messages/insights?days=${days}`)
+      if (!data?.hasData) {
+        setInsightData(null)
+        setInsightError(data?.message ?? 'No transaction data available for this period.')
+      } else {
+        setInsightData(data)
+      }
+    } catch {
+      setInsightError('Could not fetch insights right now. Please try again.')
+      setInsightData(null)
+    } finally {
+      setInsightLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'analytics' && !insightData && !insightLoading) {
+      const timer = setTimeout(() => {
+        loadInsights()
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
   return (
     <div style={{ background: 'transparent', minHeight: '100vh', color: 'var(--text)' }}>
       <Sidebar />
 
-      <main className="md:ml-60 p-6 md:p-8 max-w-5xl">
+      <main className="md:ml-60 p-4 sm:p-6 md:p-8">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 md:mb-8 flex items-start sm:items-center justify-between gap-3">
           <div>
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -176,6 +235,9 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--text)' }}>
               {getGreeting()}, {user?.name?.split(' ')[0] ?? 'there'}
             </h1>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
+              {tabTitle} · {tabSubtitle}
+            </p>
           </div>
           <span
             className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full"
@@ -186,8 +248,41 @@ export default function Dashboard() {
           </span>
         </div>
 
+        <div className="md:hidden mb-5">
+          <div className="card p-1.5 flex gap-1">
+            {[
+              { key: 'dashboard', label: 'Dashboard' },
+              { key: 'transactions', label: 'Transactions' },
+              { key: 'analytics', label: 'Analytics' },
+            ].map((tab) => {
+              const isActive = activeTab === tab.key
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => navigate(`/dashboard?tab=${tab.key}`)}
+                  className="flex-1 px-3 py-2 text-xs rounded-lg font-semibold transition-all"
+                  style={{
+                    background: isActive ? 'rgba(124,58,237,0.14)' : 'transparent',
+                    color: isActive ? 'var(--primary-light)' : 'var(--text-muted)',
+                    border: isActive ? '1px solid rgba(124,58,237,0.3)' : '1px solid transparent',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {activeTab === 'dashboard' && (
-          <>
+          <section className="max-w-6xl">
+            {messagesError && (
+              <div className="card p-4 mb-4" style={{ borderColor: 'rgba(239,68,68,0.35)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--danger)' }}>
+                  {messagesError}
+                </p>
+              </div>
+            )}
             <div className="card p-4 mb-6">
               <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
                 Dashboard Overview
@@ -202,17 +297,106 @@ export default function Dashboard() {
             {!loading && (
               <SpendingBar byCategory={byCategory} total={totalSpent} />
             )}
-          </>
+          </section>
         )}
 
         {activeTab === 'analytics' && (
-          <div className="mb-6">
+          <section className="mb-6 max-w-6xl">
             <div className="card p-4 mb-4">
               <h2 className="text-base font-bold mb-1" style={{ color: 'var(--text)' }}>Analytics</h2>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Category-wise performance and report generation.
               </p>
             </div>
+            <div className="card p-5 mb-5">
+              <div className="flex flex-col md:flex-row md:items-end gap-4">
+                <div className="flex-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Insight window (days)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={insightDays}
+                    onChange={(e) => setInsightDays(e.target.value)}
+                    className="input mt-2"
+                    placeholder="Enter number of days"
+                  />
+                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                    Personal clustering-based persona + smart narrative for your selected period.
+                  </p>
+                </div>
+                <button
+                  onClick={loadInsights}
+                  disabled={insightLoading}
+                  className="btn-primary px-5 py-2.5 disabled:opacity-50"
+                >
+                  {insightLoading ? 'Generating insights...' : 'Generate Insights'}
+                </button>
+              </div>
+            </div>
+
+            {insightError && (
+              <div className="card p-4 mb-5" style={{ borderColor: 'rgba(239,68,68,0.35)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--danger)' }}>{insightError}</p>
+              </div>
+            )}
+
+            {insightData && (() => {
+              const tone = personaTone(insightData.ml?.persona)
+              return (
+                <div className="card p-5 mb-5">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                        AI Behavior Persona
+                      </p>
+                      <h3 className="text-xl font-bold mt-1" style={{ color: 'var(--text)' }}>
+                        {insightData.narrative?.emoji} {insightData.ml?.persona}
+                      </h3>
+                    </div>
+                    <span
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full self-start lg:self-auto"
+                      style={{
+                        color: tone.color,
+                        background: tone.glow,
+                        border: `1px solid ${tone.color}55`,
+                      }}
+                    >
+                      {insightData.days} days window · {insightData.ml?.clusteredUsers ?? 1} users compared
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <StatCard label="Total Spent" value={fmt(insightData.summary?.totalSpent ?? 0)} sub="In selected window" color={tone.color} />
+                    <StatCard label="Avg Transaction" value={fmt(insightData.summary?.avgTxnAmount ?? 0)} sub={`${insightData.summary?.transactionCount ?? 0} txns`} color={tone.color} />
+                    <StatCard label="Top Category" value={insightData.summary?.topCategory ?? 'others'} sub={`${(insightData.summary?.topCategoryShare ?? 0).toFixed(1)}% share`} color={tone.color} />
+                    <StatCard label="Timing Pattern" value={`${(insightData.summary?.nightRatio ?? 0).toFixed(0)}%`} sub="Night transactions" color={tone.color} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl" style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                        What this says
+                      </p>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>
+                        {insightData.narrative?.vibe}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-2xl" style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                        Next best move
+                      </p>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>
+                        {insightData.narrative?.recommendation}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
             {!loading && sortedCategories.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {sortedCategories.map(([cat, amount]) => (
@@ -227,20 +411,18 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {activeTab === 'transactions' && (
-          <div className="card p-4 mb-4">
-            <h2 className="text-base font-bold mb-1" style={{ color: 'var(--text)' }}>Transactions</h2>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Complete list of synced expenses and merchant activity.
-            </p>
-          </div>
-        )}
-
-        {(activeTab === 'transactions' || activeTab === 'dashboard') && (
-          <div className="card p-6">
+          <section className="max-w-6xl">
+            <div className="card p-4 mb-4">
+              <h2 className="text-base font-bold mb-1" style={{ color: 'var(--text)' }}>Transactions</h2>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Complete list of synced expenses and merchant activity.
+              </p>
+            </div>
+            <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-bold" style={{ color: 'var(--text)' }}>Recent Transactions</h2>
             <span
@@ -280,11 +462,13 @@ export default function Dashboard() {
             </div>
           )}
           </div>
+          </section>
         )}
       </main>
 
       {reportCategory && (
         <ReportModal
+          key={reportCategory}
           category={reportCategory}
           messages={messages}
           onClose={() => setReportCategory(null)}

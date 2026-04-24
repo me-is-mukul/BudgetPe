@@ -1,54 +1,52 @@
 import { useEffect, useRef } from 'react'
+import * as THREE from 'three'
 
 export default function VantaFogBackground() {
-  const fogRef = useRef(null)
+  const vantaRef = useRef(null)
+  const effectRef = useRef(null)
 
   useEffect(() => {
-    let effect
-    let active = true
+    if (!vantaRef.current || effectRef.current) return
+    let mounted = true
 
-    async function initFog() {
-      const fogModule = await import('vanta/dist/vanta.fog.min')
-      const FOG = fogModule.default
-      if (!active || !fogRef.current) return
+    const initVanta = async () => {
+      try {
+        const fogModule = await import('vanta/dist/vanta.fog.min')
+        const FOG = fogModule.default
 
-      effect = FOG({
-        el: fogRef.current,
-        mouseControls: true,
-        touchControls: true,
-        gyroControls: false,
-        minHeight: 200,
-        minWidth: 200,
-        highlightColor: 0xa78bfa,
-        midtoneColor: 0x4338ca,
-        lowlightColor: 0x111827,
-        baseColor: 0x060913,
-        blurFactor: 0.58,
-        speed: 1.35,
-        zoom: 0.82,
-      })
+        if (!mounted || !vantaRef.current || effectRef.current) return
+
+        effectRef.current = FOG({
+          el: vantaRef.current,
+          THREE,
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          minHeight: 200,
+          minWidth: 200,
+          highlightColor: 0x6d28d9,
+          midtoneColor: 0x0f172a,
+          lowlightColor: 0x030712,
+          baseColor: 0x030712,
+          blurFactor: 0.75,
+          speed: 1.2,
+          zoom: 1.0,
+        })
+      } catch {
+        // Keep a plain background if Vanta fails.
+      }
     }
 
-    initFog()
+    initVanta()
 
     return () => {
-      active = false
-      if (effect) effect.destroy()
+      mounted = false
+      if (effectRef.current) {
+        effectRef.current.destroy()
+        effectRef.current = null
+      }
     }
   }, [])
 
-  return (
-    <div
-      ref={fogRef}
-      aria-hidden="true"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        zIndex: 0,
-        opacity: 0.62,
-        filter: 'saturate(1.08) contrast(1.04)',
-        pointerEvents: 'none',
-      }}
-    />
-  )
+  return <div ref={vantaRef} className="landing-vanta-bg" aria-hidden="true" />
 }

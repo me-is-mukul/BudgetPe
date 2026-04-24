@@ -33,7 +33,8 @@ def behavior_pipeline(user_transactions):
     if len(feature_vectors) < 2:
         return {"error": "Not enough users for clustering"}
 
-    labels = run_clustering(feature_vectors, n_clusters=3)
+    n_clusters = min(3, len(feature_vectors))
+    labels = run_clustering(feature_vectors, n_clusters=n_clusters)
 
     cluster_stats = get_cluster_stats(feature_vectors, labels)
 

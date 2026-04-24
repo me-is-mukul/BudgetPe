@@ -37,7 +37,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-full w-60 flex flex-col z-40"
+      className="hidden md:flex fixed left-0 top-0 h-full w-60 flex-col z-40"
       style={{
         background: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--border)',
@@ -45,7 +45,12 @@ export default function Sidebar() {
       }}
     >
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-2.5 px-5 h-16" style={{ borderBottom: '1px solid var(--border)' }}>
+      <Link
+        to="/"
+        className="flex items-center gap-2.5 px-5 h-16 transition-colors"
+        style={{ borderBottom: '1px solid var(--border)' }}
+        title="Go to landing page"
+      >
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white"
           style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}
@@ -58,30 +63,30 @@ export default function Sidebar() {
       </Link>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
-          Menu
+      <nav className="flex-1 px-4 py-5 space-y-2">
+        <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
+          Workspace
         </p>
+        <div className="p-1 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         {navItems.map((item) => {
           const active = location.pathname === '/dashboard' && activeTab === item.key
           return (
             <Link
               key={item.label}
               to={item.path}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover-surface"
               style={{
                 background: active ? 'rgba(124,58,237,0.12)' : 'transparent',
                 color: active ? 'var(--primary-light)' : 'var(--text-muted)',
-                borderLeft: active ? '2px solid var(--primary)' : '2px solid transparent',
+                border: active ? '1px solid rgba(124,58,237,0.35)' : '1px solid transparent',
               }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--text)' }}
-              onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' } }}
             >
               <NavIcon d={item.icon} />
               {item.label}
             </Link>
           )
         })}
+        </div>
       </nav>
 
       {/* Theme toggle */}
@@ -106,10 +111,8 @@ export default function Sidebar() {
           <button
             onClick={handleLogout}
             title="Logout"
-            className="shrink-0 p-1.5 rounded-lg transition-colors"
+            className="shrink-0 p-1.5 rounded-lg transition-colors danger-hover-bg"
             style={{ color: 'var(--danger)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />

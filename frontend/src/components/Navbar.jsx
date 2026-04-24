@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/useTheme'
 import ThemeToggle from './ThemeToggle'
 
 export default function Navbar() {
@@ -34,10 +34,8 @@ export default function Navbar() {
           <ThemeToggle />
           <Link
             to="/login"
-            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-lg hover-text-default hover-surface"
             style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
           >
             Sign In
           </Link>

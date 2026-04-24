@@ -20,7 +20,7 @@ function RootNavigator() {
     } else if (token && inAuth) {
       router.replace('/(tabs)');
     }
-  }, [token, loading, segments]);
+  }, [token, loading, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

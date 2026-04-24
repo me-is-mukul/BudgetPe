@@ -76,7 +76,7 @@ export default function LoginScreen() {
         </Pressable>
 
         <Link href="/(auth)/register" style={styles.link}>
-          Don't have an account? Register
+          Don&apos;t have an account? Register
         </Link>
       </View>
     </KeyboardAvoidingView>

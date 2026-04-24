@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, PermissionsAndroid, StyleSheet, Pressable, Linking } from 'react-native';
+import { View, Text, PermissionsAndroid, Platform, StyleSheet, Pressable, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SmsAndroid from 'react-native-get-sms-android';
+import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/context/AuthContext';
 import { classifyMessage, postMessage } from '@/lib/api';
 
@@ -15,22 +16,23 @@ type SmsMessage = {
 type PermissionStatus = 'pending' | 'granted' | 'denied' | 'never_ask_again';
 
 const POLL_INTERVAL_MS = 3000;
+const LAST_PROCESSED_SMS_DATE_KEY = 'lastProcessedSmsDate';
 
-function fetchLatest(): Promise<SmsMessage | null> {
+function fetchRecentMessages(): Promise<SmsMessage[]> {
   return new Promise((resolve) => {
     SmsAndroid.list(
-      JSON.stringify({ box: 'inbox', maxCount: 10 }),
+      JSON.stringify({ box: 'inbox', maxCount: 30 }),
       (err) => {
         console.error('[SMS] read error:', err);
-        resolve(null);
+        resolve([]);
       },
       (_count, smsList) => {
         try {
           const messages: SmsMessage[] = JSON.parse(smsList);
           messages.sort((a, b) => b.date - a.date);
-          resolve(messages[0] ?? null);
+          resolve(messages);
         } catch {
-          resolve(null);
+          resolve([]);
         }
       }
     );
@@ -40,11 +42,24 @@ function fetchLatest(): Promise<SmsMessage | null> {
 export default function Index() {
   const { userName, token, logout } = useAuth();
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('pending');
-  const lastIdRef = useRef<number | null>(null);
+  const processedIdsRef = useRef<Set<number>>(new Set());
+  const lastProcessedDateRef = useRef<number>(0);
 
   useEffect(() => {
     if (!token) {
       console.log('[SMS] No token, skipping initialization');
+      return;
+    }
+
+    if (Platform.OS !== 'android') {
+      console.log('[SMS] SMS reading is only supported on Android');
+      setPermissionStatus('denied');
+      return;
+    }
+
+    if (!SmsAndroid || typeof SmsAndroid.list !== 'function') {
+      console.log('[SMS] Native SMS module unavailable. Use a development build, not Expo Go.');
+      setPermissionStatus('denied');
       return;
     }
 
@@ -53,6 +68,9 @@ export default function Index() {
     let intervalId: ReturnType<typeof setInterval>;
 
     async function init() {
+      const savedDate = await SecureStore.getItemAsync(LAST_PROCESSED_SMS_DATE_KEY);
+      lastProcessedDateRef.current = Number(savedDate) || 0;
+
       const alreadyGranted = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.READ_SMS
       );
@@ -86,52 +104,77 @@ export default function Index() {
 
       async function poll() {
         try {
-          const msg = await fetchLatest();
-          
-          if (!msg) {
+          const messages = await fetchRecentMessages();
+
+          if (messages.length === 0) {
             console.log('[SMS] No messages in inbox');
             return;
           }
-          
-          if (msg._id === lastIdRef.current) {
-            console.log('[SMS] Skipping duplicate (already processed):', msg._id);
+
+          const newMessages = messages
+            .filter(
+              (msg) =>
+                msg.date > lastProcessedDateRef.current &&
+                !processedIdsRef.current.has(msg._id)
+            )
+            .sort((a, b) => a.date - b.date);
+
+          if (newMessages.length === 0) {
+            const latestId = messages[0]?._id;
+            if (latestId != null) {
+              console.log('[SMS] Skipping duplicate (already processed):', latestId);
+            }
             return;
           }
 
-          console.log('[SMS] New message detected:', {
-            id: msg._id,
-            from: msg.address,
-            body: msg.body.substring(0, 100) + '...',
-            date: new Date(msg.date).toISOString(),
-          });
+          console.log('[SMS] Found new messages:', newMessages.length);
 
-          lastIdRef.current = msg._id;
+          for (const msg of newMessages) {
+            console.log('[SMS] New message detected:', {
+              id: msg._id,
+              from: msg.address,
+              body: msg.body.substring(0, 100) + '...',
+              date: new Date(msg.date).toISOString(),
+            });
 
-          try {
-            console.log('[SMS] Sending to ML Model for classification...');
-            const result = await classifyMessage(msg.body);
-            
-            if (!result) {
-              console.warn('[SMS] ML Model rejected: Not a valid bank debit message');
-              console.log('[SMS] Message text:', msg.body);
-              return;
+            try {
+              console.log('[SMS] Sending to ML Model for classification...');
+              const result = await classifyMessage(msg.body);
+
+              if (!result) {
+                console.warn('[SMS] ML Model rejected: Not a valid bank debit message');
+                console.log('[SMS] Message text:', msg.body);
+                processedIdsRef.current.add(msg._id);
+                lastProcessedDateRef.current = Math.max(lastProcessedDateRef.current, msg.date);
+                await SecureStore.setItemAsync(
+                  LAST_PROCESSED_SMS_DATE_KEY,
+                  String(lastProcessedDateRef.current)
+                );
+                continue;
+              }
+
+              console.log('[SMS] Classification result:', result);
+              console.log('[SMS] Sending to Backend...');
+
+              await postMessage(token!, {
+                ...result,
+                originalText: msg.body,
+                receiver: msg.address,
+              });
+
+              processedIdsRef.current.add(msg._id);
+              lastProcessedDateRef.current = Math.max(lastProcessedDateRef.current, msg.date);
+              await SecureStore.setItemAsync(
+                LAST_PROCESSED_SMS_DATE_KEY,
+                String(lastProcessedDateRef.current)
+              );
+              console.log('[SMS] ✅ Successfully saved to backend!');
+            } catch (err) {
+              console.error('[SMS] Classification/Backend error:', {
+                error: err instanceof Error ? err.message : String(err),
+                stack: err instanceof Error ? err.stack : undefined,
+              });
             }
-
-            console.log('[SMS] Classification result:', result);
-            console.log('[SMS] Sending to Backend...');
-            
-            await postMessage(token!, {
-              ...result,
-              originalText: msg.body,
-              receiver: msg.address,
-            });
-            
-            console.log('[SMS] ✅ Successfully saved to backend!');
-          } catch (err) {
-            console.error('[SMS] Classification/Backend error:', {
-              error: err instanceof Error ? err.message : String(err),
-              stack: err instanceof Error ? err.stack : undefined,
-            });
           }
         } catch (err) {
           console.error('[SMS] Poll error:', err);
@@ -149,7 +192,7 @@ export default function Index() {
       console.log('[SMS] Cleaning up polling interval');
       clearInterval(intervalId);
     };
-  }, [token]);
+  }, [token, userName]);
 
   if (permissionStatus === 'never_ask_again') {
     return (
@@ -168,8 +211,11 @@ export default function Index() {
   if (permissionStatus === 'denied') {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>SMS permission denied.</Text>
-        <Text style={styles.hint}>Restart the app and allow SMS access to continue.</Text>
+        <Text style={styles.error}>SMS access unavailable.</Text>
+        <Text style={styles.hint}>
+          Ensure READ_SMS is allowed and run this app as an Android development build.
+          Expo Go may not support the native SMS module.
+        </Text>
       </View>
     );
   }

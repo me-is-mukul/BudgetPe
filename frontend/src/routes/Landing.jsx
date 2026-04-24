@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import OrbBlob from '../components/OrbBlob'
+import VantaFogBackground from '../components/VantaFogBackground'
 
 const features = [
   {
@@ -43,7 +44,9 @@ const stats = [
 
 export default function Landing() {
   return (
-    <div style={{ background: 'transparent', minHeight: '100vh', color: 'var(--text)', overflowX: 'hidden' }}>
+    <div className="relative z-10" style={{ background: 'transparent', minHeight: '100vh', color: 'var(--text)', overflowX: 'hidden', isolation: 'isolate' }}>
+      <VantaFogBackground />
+      <div className="landing-vanta-veil" />
       <Navbar />
 
       {/* ── Hero ─────────────────────────────────────────── */}
@@ -131,7 +134,9 @@ export default function Landing() {
 
           {/* Right: 3D Orb */}
           <div className="flex justify-center items-center order-1 md:order-2 animate-float">
+            <div className="orb-glass-wrap">
             <OrbBlob className="w-64 h-64 md:w-80 md:h-80 lg:w-105 lg:h-105" />
+            </div>
           </div>
         </div>
       </section>

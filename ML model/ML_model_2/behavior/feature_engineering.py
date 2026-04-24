@@ -2,7 +2,10 @@ import numpy as np
 from datetime import datetime
 
 def parse_date(date_str):
-    return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    try:
+        return datetime.fromisoformat(str(date_str).replace("Z", "+00:00"))
+    except Exception:
+        return None
 
 def build_user_features(transactions):
     """
@@ -42,6 +45,14 @@ def build_user_features(transactions):
             continue
 
         dt = parse_date(date_str)
+        if dt is None:
+            continue
+
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError):
+            continue
+
         hour = dt.hour
         weekday = dt.weekday() 
 
@@ -62,10 +73,13 @@ def build_user_features(transactions):
 
         timestamps.append(dt)
 
+    valid_txns = len(amounts)
+    if valid_txns == 0:
+        return None
 
-    food_ratio = food_count / total_txns
-    travel_ratio = travel_count / total_txns
-    shopping_ratio = shopping_count / total_txns
+    food_ratio = food_count / valid_txns
+    travel_ratio = travel_count / valid_txns
+    shopping_ratio = shopping_count / valid_txns
 
     avg_amount = np.mean(amounts) if amounts else 0
     variance = np.var(amounts) if amounts else 0
@@ -76,10 +90,10 @@ def build_user_features(transactions):
     else:
         total_days = 1
 
-    txn_freq = total_txns / total_days if total_days > 0 else total_txns
+    txn_freq = valid_txns / total_days if total_days > 0 else valid_txns
 
-    night_ratio = night_count / total_txns
-    weekend_ratio = weekend_count / total_txns
+    night_ratio = night_count / valid_txns
+    weekend_ratio = weekend_count / valid_txns
 
 
     feature_vector = [
